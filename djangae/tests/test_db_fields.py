@@ -7,6 +7,7 @@ from django.db import models
 from django.db.utils import IntegrityError
 from django.conf import settings
 from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.core.validators import EmailValidator
 
 # DJANGAE
 from djangae.contrib import sleuth
@@ -103,6 +104,9 @@ class ISOther(models.Model):
     class Meta:
         app_label = "djangae"
 
+class StringPkModel(models.Model):
+    name = models.CharField(max_length=500, primary_key=True)
+
 
 class RelationWithoutReverse(models.Model):
     name = models.CharField(max_length=500)
@@ -142,6 +146,13 @@ class IterableFieldModel(models.Model):
     class Meta:
         app_label = "djangae"
 
+class IterableRelatedModel(models.Model):
+    related_set = RelatedListField(ISOther, related_name="+")
+    related_list = RelatedListField(ISOther, related_name="+")
+
+class IterableRelatedWithNonIntPkModel(models.Model):
+    related_set = RelatedListField(StringPkModel, related_name="+")
+    related_list = RelatedListField(StringPkModel, related_name="+")
 
 class IterableFieldsWithValidatorsModel(models.Model):
     set_field = SetField(models.CharField(max_length=100), min_length=2, max_length=3, blank=False)
@@ -165,6 +176,7 @@ class JSONFieldWithDefaultModel(models.Model):
 class ModelWithCharField(models.Model):
     char_field_with_max = CharField(max_length=10, default='', blank=True)
     char_field_without_max = CharField(default='', blank=True)
+    char_field_as_email = CharField(validators=[EmailValidator(message='failed')], blank=True)
 
 
 class ModelWithCharOrNoneField(models.Model):
@@ -468,7 +480,7 @@ class IterableFieldTests(TestCase):
             that no validation error is rasied.
         """
         others = []
-        for x in xrange(2):
+        for x in range(2):
             others.append(ISOther.objects.create())
         instance = IterableFieldsWithValidatorsModel(
             related_set=set(others),  # not being tested here
@@ -480,7 +492,7 @@ class IterableFieldTests(TestCase):
 
     def test_list_field_max_length_invalid(self):
         others = []
-        for x in xrange(2):
+        for x in range(2):
             others.append(ISOther.objects.create())
         instance = IterableFieldsWithValidatorsModel(
             related_set=set(others),  # not being tested here
@@ -496,7 +508,7 @@ class IterableFieldTests(TestCase):
 
     def test_list_field_min_length_invalid(self):
         others = []
-        for x in xrange(2):
+        for x in range(2):
             others.append(ISOther.objects.create())
         instance = IterableFieldsWithValidatorsModel(
             related_set=set(others),  # not being tested here
@@ -512,7 +524,7 @@ class IterableFieldTests(TestCase):
 
     def test_set_field_max_length_invalid(self):
         others = []
-        for x in xrange(2):
+        for x in range(2):
             others.append(ISOther.objects.create())
         instance = IterableFieldsWithValidatorsModel(
             related_set=set(others),  # not being tested here
@@ -528,7 +540,7 @@ class IterableFieldTests(TestCase):
 
     def test_set_field_min_length_invalid(self):
         others = []
-        for x in xrange(2):
+        for x in range(2):
             others.append(ISOther.objects.create())
         instance = IterableFieldsWithValidatorsModel(
             related_set=set(others),  # not being tested here
@@ -570,7 +582,7 @@ class RelatedIterableFieldTests(TestCase):
             that no validation error is rasied.
         """
         others = []
-        for x in xrange(2):
+        for x in range(2):
             others.append(ISOther.objects.create())
         instance = IterableFieldsWithValidatorsModel(
             list_field=["1", "2"],  # not being tested here
@@ -582,7 +594,7 @@ class RelatedIterableFieldTests(TestCase):
 
     def test_related_list_field_max_length_invalid(self):
         others = []
-        for x in xrange(5):
+        for x in range(5):
             others.append(ISOther.objects.create())
         instance = IterableFieldsWithValidatorsModel(
             list_field=["1", "2"],  # not being tested here
@@ -598,7 +610,7 @@ class RelatedIterableFieldTests(TestCase):
 
     def test_related_list_field_min_length_invalid(self):
         others = []
-        for x in xrange(2):
+        for x in range(2):
             others.append(ISOther.objects.create())
         instance = IterableFieldsWithValidatorsModel(
             list_field=["1", "2"],  # not being tested here
@@ -614,7 +626,7 @@ class RelatedIterableFieldTests(TestCase):
 
     def test_related_set_field_max_length_invalid(self):
         others = []
-        for x in xrange(5):
+        for x in range(5):
             others.append(ISOther.objects.create())
         instance = IterableFieldsWithValidatorsModel(
             list_field=["1", "2"],  # not being tested here
@@ -630,7 +642,7 @@ class RelatedIterableFieldTests(TestCase):
 
     def test_related_set_field_min_length_invalid(self):
         others = []
-        for x in xrange(2):
+        for x in range(2):
             others.append(ISOther.objects.create())
         instance = IterableFieldsWithValidatorsModel(
             list_field=["1", "2"],  # not being tested here
@@ -643,6 +655,38 @@ class RelatedIterableFieldTests(TestCase):
             "{'related_set': [u'Ensure this field has at least 2 items (it has 1).']}",
             instance.full_clean,
         )
+
+    def test_model_stores_ids_as_integers_when_saving(self):
+        others = []
+        for x in range(2):
+            others.append(ISOther.objects.create())
+
+        instance = IterableRelatedModel(
+            related_set_ids=[str(x.pk) for x in others],
+            related_list_ids=[str(x.pk) for x in others],
+        )
+
+        instance.save()
+        instance.refresh_from_db()
+
+        self.assertEqual(instance.related_set_ids, [int(x.pk) for x in others])
+        self.assertEqual(instance.related_list_ids, [int(x.pk) for x in others])
+
+    def test_model_stores_ids_as_non_integers(self):
+        others = []
+        for x in range(2):
+            others.append(StringPkModel.objects.create(name=str(x)))
+
+        instance = IterableRelatedWithNonIntPkModel(
+            related_set_ids=[x.pk for x in others],
+            related_list_ids=[x.pk for x in others],
+        )
+
+        instance.save()
+        instance.refresh_from_db()
+
+        self.assertEqual(instance.related_set_ids, [x.pk for x in others])
+        self.assertEqual(instance.related_list_ids, [x.pk for x in others])
 
 
 class RelatedListFieldModelTests(TestCase):
@@ -690,7 +734,7 @@ class Post(models.Model):
 
 
 class Tag(models.Model):
-    name = models.CharField()
+    name = models.CharField(max_length=64)
 
 
 class RelatedSetFieldModelTests(TestCase):
@@ -706,7 +750,7 @@ class RelatedSetFieldModelTests(TestCase):
     def test_prefetch_related(self):
         tag = Tag.objects.create(name="Apples")
 
-        for i in xrange(2):
+        for i in range(2):
             Post.objects.create(content="Bananas", tags={tag})
 
         posts = list(Post.objects.prefetch_related('tags').all())
@@ -748,7 +792,7 @@ class InstanceListFieldTests(TestCase):
         # Extra one to make sure we're filtering properly
         Tag.objects.create(name="unused")
 
-        for i in xrange(3):
+        for i in range(3):
             Post.objects.create(content="Bananas", ordered_tags=tags)
 
         with self.assertNumQueries(2):
@@ -1180,11 +1224,15 @@ class CharFieldModelTests(TestCase):
             test_instance.full_clean,
          )
 
+    def test_additional_validators_work(self):
+        test_instance = ModelWithCharField(char_field_as_email='bananas')
+        self.assertRaisesMessage(ValidationError, 'failed', test_instance.full_clean)
+
     def test_too_long_max_value_set(self):
         try:
             class TestModel(models.Model):
                 test_char_field = CharField(max_length=1501)
-        except AssertionError, e:
+        except AssertionError as e:
             self.assertEqual(
                 e.message,
                 'CharFields max_length must not be grater than 1500 bytes.',
@@ -1235,3 +1283,38 @@ class StringReferenceRelatedSetFieldModelTests(TestCase):
         self.assertTrue(form.is_valid())
         instance = form.save()
         self.assertEqual({related.pk}, instance.related_things_ids)
+
+
+
+class PFPost(models.Model):
+    content = models.TextField()
+    authors = RelatedSetField('PFAuthor', related_name='posts')
+
+    class Meta:
+        app_label = "djangae"
+
+class PFAuthor(models.Model):
+    name = models.CharField(max_length=32)
+    awards = RelatedSetField('PFAwards')
+
+    class Meta:
+        app_label = "djangae"
+
+class PFAwards(models.Model):
+    name = models.CharField(max_length=32)
+
+    class Meta:
+        app_label = "djangae"
+
+
+class RelatedFieldPrefetchTests(TestCase):
+
+    def test_prefetch_related(self):
+        award = PFAwards.objects.create(name="award")
+        author = PFAuthor.objects.create(awards={award})
+        post = PFPost.objects.create(authors={author})
+
+        posts = list(PFPost.objects.all().prefetch_related('authors__awards'))
+
+        with self.assertNumQueries(0):
+            awards = list(posts[0].authors.all()[0].awards.all())

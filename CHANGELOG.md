@@ -1,12 +1,31 @@
-## v0.9.9 (in development)
+## v0.9.10 (in development)
 
 ### New features & improvements:
 
+ - Add support for the latest App Engine SDK (1.9.51)
+ - The default ports for the API server, admin server and blobstore service have changed to 8010, 8011, and 8012 respectively to avoid clashes with modules
+ - Switched the default storage backend (in settings_base.py) to cloud storage. If you need to retain compatibility make sure you
+ override the `DEFAULT_FILE_STORAGE` setting to point to `'djangae.storage.BlobstoreStorage'`.
+ - Added AsyncMultiQuery as a replacement for Google's MultiQuery (which doesn't exist on Cloud Datastore).  This is the first step towards support for Cloud Datastore and therefore Flexible Environment.
+
+### Bug fixes:
+
+ - When running the local sandbox, if a port clash is detected then the next port will be used (this was broken before)
+ - Accessing the Datastore from outside tests will no longer throw an error when using the test sandbox
+ - The in-context cache is now reliably wiped when the testbed is initialized for each test
+
+## v0.9.9 (release date: 27th March 2017)
+
+### New features & improvements:
+
+- Added preliminary support for Django 1.11 (not yet released, don't upgrade yet!)
+- The system check for session_csrf now works with the MIDDLEWARE setting when using Django >= 1.10.
 - System check for deferred builtin which should always be switched off.
 - Implemented weak (memcache) locking to contrib.locking
 - The `disable_cache` decorator now wraps the returned function with functools.wraps
 - `prefetch_related()` now works on RelatedListField and RelatedSetField
 - Added a test for Model.objects.none().filter(pk=xyz) type filters
+- Use `user.is_authenticated` instead of `user.is_authenticated()` when using Django >= 1.10.
 - Added `max_length` and `min_length` validation support to `ListField`, `SetField`, `RelatedListField` and `RelatedSetField`.
 - Moved checks verifying csrf, csp and template loader configuration from djangae-scaffold into Djangae.
 - Renamed `contrib.gauth.datastore` and `contrib.gauth.sql` to `contrib.gauth_datastore` and `contrib.gauth_sql` respectively.
@@ -17,8 +36,14 @@
     - This change requires you to update your application to reference/import from the new paths.
     - The old paths still work for now but will trigger deprecation warnings.
 - Cleaned up the query fetching code to be more readable. Moved where result fetching happens to be inline with other backends, which makes Django Debug Toolbar query profiling output correct
+- Cleaned up app_id handling in --sandbox management calls
 - The default GCS bucket name is now cached when first read, saving on RPC calls
-
+- Updated `AppEngineSecurityMiddleware` to work with Django >= 1.10
+- Added a test for prefetching via RelatedSetField/RelatedListField. Cleaned up some related code.
+- Allow the sandbox argument to be at any position.
+- Added some tests for the management command code.
+- Added a test to prove that the ordering specified on a model's `_meta` is used for pagination, when no custom order has been specified on the query set.
+- Added a `@task_or_admin_only` decorator to `djangae.environment` to allow restricting views to tasks (including crons) or admins of the application.
 
 ### Bug fixes:
 
@@ -40,11 +65,17 @@
 - Fixed `djangae.contrib.mappers.defer.defer_iteration` to allow inequality filters in querysets
 - Fixed a bug in `djangae.contrib.mappers.defer.defer_iteration` where `_shard` would potentially ignore the first element of the queryset
 - Fixed an incompatibility between appstats and the cloud storage backend due to RPC calls being made in the __init__ method
+- Fixed a bug where it wasn't possible to add validators to djangae.fields.CharField
+- Fixed a bug where entries in `RelatedSetField`s and `RelatedListField`s weren't being converted to the same type as the primary key of the model
+- Fixed a bug where running tests would incorrectly load the real search stub before the test version
+- Fixed a bug where IDs weren't reserved with the datastore allocator immediately and so could end up with a race-condition where an ID could be reused
 
 ### Documentation:
 
 - Improved documentation for `djangae.contrib.mappers.defer_iteration`.
-
+- Changed the installation documentation to reflect the correct way to launch tests
+- Added documentation for local server port configuration.
+- Added documentation for `DJANGAE_ADDITIONAL_MODULES` setting.
 
 ## v0.9.8 (release date: 6th December 2016)
 
