@@ -1,3 +1,14 @@
+# ⚠️ **ARCHIVED REPOSITORY** ⚠️
+
+**This repository has been archived and is no longer actively maintained.**
+
+It is kept here for historical purposes, reference, and educational use.
+
+* **No new features, updates, or bug fixes will be added.**
+* **Issues and Pull Requests are disabled or will be ignored.**
+* Use this code **at your own risk**.
+
+
 # Djangae
 
 [![Join the chat at https://gitter.im/potatolondon/djangae](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/potatolondon/djangae?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
